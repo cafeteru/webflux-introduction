@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS product (
     id BIGINT PRIMARY KEY,
-    name VARCHAR(255),
+    name VARCHAR(255) UNIQUE,
     price FLOAT
 );
 

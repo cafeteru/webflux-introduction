@@ -20,24 +20,33 @@ public class ProductService implements ProductPort {
     }
 
     public Mono<Product> getById(final Long id) {
-        return productRepository.findById(id);
+        return productRepository.findById(id)
+                .switchIfEmpty(Mono.error(new RuntimeException("Product not found")));
     }
 
     public Mono<Product> save(final Product product) {
-        return productRepository.save(product);
+        var hasElement = productRepository.findByName(product.getName()).hasElement();
+        return hasElement.flatMap(existsValue -> existsValue ?
+                Mono.error(new RuntimeException("Product already exists")) :
+                productRepository.save(product));
     }
 
     public Mono<Void> delete(final Long id) {
-        return productRepository.deleteById(id);
+        return productRepository.existsById(id).flatMap(existsValue -> existsValue ?
+                productRepository.deleteById(id) :
+                Mono.error(new RuntimeException("Product not found")));
     }
 
     public Mono<Product> update(final Long id, final Product product) {
-        return productRepository.findById(id)
-                .map(p -> Product.builder()
-                        .id(p.getId())
-                        .name(p.getName())
-                        .price(p.getPrice())
-                        .build())
-                .flatMap(productRepository::save);
+        var hasElement = productRepository.repeatedName(id, product.getName()).hasElement();
+        return hasElement.flatMap(existsValue -> existsValue ?
+                Mono.error(new RuntimeException("Product already exists")) :
+                productRepository.findById(id)
+                        .map(p -> Product.builder()
+                                .id(p.getId())
+                                .name(product.getName())
+                                .price(product.getPrice())
+                                .build())
+                        .flatMap(productRepository::save));
     }
 }
