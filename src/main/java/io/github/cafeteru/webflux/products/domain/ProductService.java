@@ -1,10 +1,12 @@
 package io.github.cafeteru.webflux.products.domain;
 
+import io.github.cafeteru.webflux.config.exception.CustomException;
 import io.github.cafeteru.webflux.products.adapter.db.ProductRepository;
 import io.github.cafeteru.webflux.products.adapter.db.model.Product;
 import io.github.cafeteru.webflux.products.port.ProductPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -21,26 +23,26 @@ public class ProductService implements ProductPort {
 
     public Mono<Product> getById(final Long id) {
         return productRepository.findById(id)
-                .switchIfEmpty(Mono.error(new RuntimeException("Product not found")));
+                .switchIfEmpty(Mono.error(new CustomException("Product not found", HttpStatus.NOT_FOUND)));
     }
 
     public Mono<Product> save(final Product product) {
         var hasElement = productRepository.findByName(product.getName()).hasElement();
         return hasElement.flatMap(existsValue -> existsValue ?
-                Mono.error(new RuntimeException("Product already exists")) :
+                Mono.error(new CustomException("Product already exists", HttpStatus.BAD_REQUEST)) :
                 productRepository.save(product));
     }
 
     public Mono<Void> delete(final Long id) {
         return productRepository.existsById(id).flatMap(existsValue -> existsValue ?
                 productRepository.deleteById(id) :
-                Mono.error(new RuntimeException("Product not found")));
+                Mono.error(new CustomException("Product not found", HttpStatus.NOT_FOUND)));
     }
 
     public Mono<Product> update(final Long id, final Product product) {
         var hasElement = productRepository.repeatedName(id, product.getName()).hasElement();
         return hasElement.flatMap(existsValue -> existsValue ?
-                Mono.error(new RuntimeException("Product already exists")) :
+                Mono.error(new CustomException("Product already exists", HttpStatus.BAD_REQUEST)) :
                 productRepository.findById(id)
                         .map(p -> Product.builder()
                                 .id(p.getId())
